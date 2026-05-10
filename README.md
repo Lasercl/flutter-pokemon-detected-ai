@@ -46,8 +46,24 @@ The project heavily relies on native Android integration for ML inference to byp
    ```
    > **Note:** Please ensure your physical device is adequately charged (>20%) and not in extreme battery-saving mode, as the Android OS may forcefully restrict the native JNI initialization process.
 
-## 🧠 Model Details
-The AI model was initially built using Keras and exported to TensorFlow Lite format. It is specifically optimized to avoid `ERROR_NEEDS_FLEX_OPS` by using standard TensorFlow Lite operations (Float32). This allows it to run smoothly on standard Android runtimes without requiring the heavy `tensorflow-lite-select-tf-ops` dependency, thereby avoiding native loading crashes on older or restrictive OS environments.
+## 🧠 Model Details & Architecture
+The AI model was trained using TensorFlow/Keras and exported to a standard TensorFlow Lite format. It is specifically optimized to avoid `ERROR_NEEDS_FLEX_OPS` by relying purely on standard TensorFlow Lite operations (Float32). This allows it to run smoothly natively without the heavy `tensorflow-lite-select-tf-ops` dependency, preventing native loading crashes.
+
+### Architecture
+The model uses **EfficientNetB0** as its base feature extractor, combined with a custom classification head to classify 150 different Pokémon species.
+- **Base Model**: EfficientNetB0 (ImageNet weights, fine-tuned).
+- **Input Shape**: 224x224 RGB images.
+- **Custom Head**:
+  - `Conv2D` (1280 filters, 1x1, ReLU) for dimensionality expansion.
+  - `MaxPooling2D` (3x3, strides 1x1) for spatial downsampling.
+  - `GlobalAveragePooling2D` to flatten spatial dimensions.
+  - `Dropout` (0.4) to prevent overfitting.
+  - `Dense` (150 units, Softmax) for final classification probabilities.
+
+### Training Strategy
+- **Mixed Precision**: Trained using `mixed_float16` for faster GPU computation, while keeping the output layer in `float32` for numerical stability.
+- **Progressive Fine-Tuning**: Trained across 4 progressive phases with decaying learning rates (from `1e-4` down to `1e-7`) to carefully adjust the pre-trained EfficientNet weights without causing catastrophic forgetting.
+- **Performance**: Achieved **~85.5%** accuracy on the unseen testing dataset.
 
 ---
 *Created with ❤️ by Lasercl*
